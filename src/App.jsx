@@ -41,7 +41,12 @@ const defaultExercises = [
   "Leg Press",
   "Treadmill"
 ];
-
+const workoutTemplates = {
+  Push: ["Chest Press", "Pec Deck", "Shoulder Press", "Triceps Pushdown", "Assisted Dip", "AB Crunch"],
+  Pull: ["Lat Pulldown", "Row", "Rear Deltoid", "Biceps Curl", "Ab Crunch"],
+  Legs: ["Leg Curl", "Glute Kickback", "Leg Press", "Leg Extension", "Calf Raise",],
+  "Full Body": ["Squat", "Bench Press", "Row", "Treadmill"]
+};
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -75,7 +80,14 @@ export default function FitnessTrackerApp() {
   const [workouts, setWorkouts] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const fileInputRef = useRef(null);
-    const CLOUD_DOC_ID = "main-workouts";
+  const CLOUD_DOC_ID = "main-workouts";
+  const [selectedExercise, setSelectedExercise] = useState("");
+  const workoutTemplates = {
+  Push: ["Bench Press", "Shoulder Press", "Triceps Pushdown"],
+  Pull: ["Lat Pulldown", "Row", "Biceps Curl"],
+  Legs: ["Squat", "Leg Press", "Deadlift"],
+  "Full Body": ["Squat", "Bench Press", "Row", "Treadmill"]
+};
 
 useEffect(() => {
   async function loadCloudData() {
@@ -233,6 +245,25 @@ useEffect(() => {
     setWorkouts((current) => [next, ...current]);
     setActiveId(next.id);
   }
+  function addWorkoutFromTemplate(templateName) {
+  const exercises = workoutTemplates[templateName].map((name) => ({
+    id: crypto.randomUUID(),
+    name,
+    sets: [emptySet()]
+  }));
+
+  const next = {
+    id: crypto.randomUUID(),
+    date: todayISO(),
+    title: templateName,
+    bodyWeight: "",
+    exercises,
+    notes: ""
+  };
+
+  setWorkouts((current) => [next, ...current]);
+  setActiveId(next.id);
+}
 
   function deleteWorkout(id) {
     const remaining = workouts.filter((w) => w.id !== id);
@@ -365,7 +396,56 @@ function importData(event) {
       })
     );
   }
+const exerciseNames = useMemo(() => {
+  const names = new Set();
 
+  workouts.forEach((workout) => {
+    workout.exercises.forEach((exercise) => {
+      if (exercise.name) {
+        names.add(exercise.name);
+      }
+    });
+  });
+
+  return Array.from(names).sort();
+}, [workouts]);
+
+
+const exerciseProgressData = useMemo(() => {
+  if (!selectedExercise) return [];
+
+  const selected = selectedExercise.trim().toLowerCase();
+
+  return workouts
+    .map((workout) => {
+      let bestWeight = 0;
+
+      workout.exercises.forEach((exercise) => {
+        const exerciseName = exercise.name.trim().toLowerCase();
+
+if (
+  exerciseName === selected ||
+  exerciseName.includes(selected) ||
+  selected.includes(exerciseName)
+) {
+          exercise.sets.forEach((set) => {
+            const weight = Number(set.weight);
+
+            if (!Number.isNaN(weight) && weight > bestWeight) {
+              bestWeight = weight;
+            }
+          });
+        }
+      });
+
+      return {
+        date: workout.date,
+        weight: bestWeight
+      };
+    })
+    .filter((entry) => entry.weight > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}, [workouts, selectedExercise]);
   if (!activeWorkout) return null;
 
   return (
@@ -408,6 +488,25 @@ function importData(event) {
 
           </div>
         </motion.header>
+        <div className="rounded-3xl bg-white p-4 shadow-sm">
+
+  <h2 className="mb-3 font-semibold">
+    Workout Templates
+  </h2>
+
+  <div className="grid grid-cols-2 gap-2">
+    {Object.keys(workoutTemplates).map((templateName) => (
+      <button
+        key={templateName}
+        onClick={() => addWorkoutFromTemplate(templateName)}
+        className="rounded-2xl border p-3"
+      >
+        {templateName}
+      </button>
+    ))}
+  </div>
+
+</div>
 
         <div className="rounded-3xl bg-white p-4 shadow-sm">
 
@@ -624,47 +723,94 @@ function importData(event) {
           </div>
         </button>
 
-        <div className="rounded-3xl bg-white p-4 shadow-sm">
 
-          <div className="mb-3 flex items-center gap-2">
-            <TrendingUp size={18} />
-            <h2 className="font-semibold">
-              Body Weight Trend
-            </h2>
-          </div>
 
-          <div className="h-56">
+<div className="rounded-3xl bg-white p-4 shadow-sm">
 
-            {bodyWeightData.length >= 2 ? (
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-              >
+  <div className="mb-3 flex items-center gap-2">
+    <TrendingUp size={18} />
+    <h2 className="font-semibold">
+      Body Weight Trend
+    </h2>
+  </div>
 
-                <LineChart data={bodyWeightData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
+  <div className="h-56 w-full">
+    {bodyWeightData.length >= 1 ? (
+      <ResponsiveContainer width="99%" height={220}>
+        <LineChart data={bodyWeightData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Line
+            type="monotone"
+            dataKey="weight"
+            stroke="#000"
+            strokeWidth={3}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    ) : (
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        Add body weight entries to see a chart.
+      </div>
+    )}
+  </div>
+</div>
+<div className="rounded-3xl bg-white p-4 shadow-sm">
 
-                  <Line
-                    type="monotone"
-                    dataKey="weight"
-                    strokeWidth={3}
-                  />
-                </LineChart>
+  <h2 className="mb-3 font-semibold">
+    Exercise Progress
+  </h2>
 
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                Add body weight entries to see a chart.
-              </div>
-            )}
+  <select
+    value={selectedExercise}
+    onChange={(e) => setSelectedExercise(e.target.value)}
+    className="mb-4 w-full rounded-2xl border p-3"
+  >
+    <option value="">Select exercise</option>
 
-          </div>
-        </div>
+    {exerciseNames.map((name) => (
+      <option key={name} value={name}>
+        {name}
+      </option>
+    ))}
+  </select>
+
+  <div className="h-56 w-full">
+
+    {exerciseProgressData.length >= 1 ? (
+
+      <ResponsiveContainer width="99%" height={220}>
+
+        <LineChart data={exerciseProgressData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+
+          <Line
+            type="monotone"
+            dataKey="weight"
+            stroke="#000"
+            strokeWidth={3}
+          />
+        </LineChart>
+
+      </ResponsiveContainer>
+
+    ) : (
+
+      <div className="flex h-full items-center justify-center text-sm text-slate-500">
+        Select an exercise with at least two logged workouts.
+      </div>
+
+    )}
+  </div>
+</div>
 
       </div>
     </div>
+
   );
 }
