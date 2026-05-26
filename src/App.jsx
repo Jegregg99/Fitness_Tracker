@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { db } from "./firebase";
+import {
+  doc,
+  setDoc,
+  getDoc
+} from "firebase/firestore";
 import {
   Dumbbell,
   Plus,
@@ -69,37 +75,90 @@ export default function FitnessTrackerApp() {
   const [workouts, setWorkouts] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const fileInputRef = useRef(null);
+    const CLOUD_DOC_ID = "main-workouts";
 
-  useEffect(() => {
+useEffect(() => {
+  async function loadCloudData() {
+
+    try {
+      const docRef = doc(db, "fitnessData", CLOUD_DOC_ID);
+
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+
+        setWorkouts(data.workouts || []);
+        setActiveId(data.activeId || null);
+
+        return;
+      }
+
+    } catch (error) {
+      console.error("Cloud load failed:", error);
+    }
+
     const saved = localStorage.getItem(STORAGE_KEY);
 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+
         setWorkouts(parsed.workouts || []);
         setActiveId(parsed.activeId || parsed.workouts?.[0]?.id || null);
+
         return;
+
       } catch (error) {
         console.error(error);
       }
     }
 
     const first = emptyWorkout();
+
     setWorkouts([first]);
     setActiveId(first.id);
-  }, []);
+  }
 
-  useEffect(() => {
-    if (workouts.length) {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          workouts,
-          activeId
-        })
+  loadCloudData();
+
+}, []);
+
+useEffect(() => {
+
+  async function saveData() {
+
+    if (!workouts.length) return;
+
+    const data = {
+      workouts,
+      activeId
+    };
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(data)
+    );
+
+    try {
+
+      await setDoc(
+        doc(db, "fitnessData", CLOUD_DOC_ID),
+        data
       );
+
+      console.log("Cloud save successful");
+
+    } catch (error) {
+
+      console.error("Cloud save failed:", error);
+
     }
-  }, [workouts, activeId]);
+  }
+
+  saveData();
+
+}, [workouts, activeId]);
 
   const activeWorkout =
     workouts.find((w) => w.id === activeId) || workouts[0];
