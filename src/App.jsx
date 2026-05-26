@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Dumbbell,
@@ -68,6 +68,7 @@ function emptyWorkout() {
 export default function FitnessTrackerApp() {
   const [workouts, setWorkouts] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -236,23 +237,60 @@ export default function FitnessTrackerApp() {
     });
   }
 
-  function exportData() {
-    const blob = new Blob(
-      [JSON.stringify(workouts, null, 2)],
-      {
-        type: "application/json"
+function exportData() {
+  const blob = new Blob(
+    [JSON.stringify(workouts, null, 2)],
+    {
+      type: "application/json"
+    }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "fitness-tracker-data.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    try {
+      const importedWorkouts = JSON.parse(e.target.result);
+
+      if (!Array.isArray(importedWorkouts)) {
+        alert("Invalid backup file.");
+        return;
       }
-    );
 
-    const url = URL.createObjectURL(blob);
+      setWorkouts(importedWorkouts);
+      setActiveId(importedWorkouts[0]?.id || null);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "fitness-tracker-data.json";
-    a.click();
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          workouts: importedWorkouts,
+          activeId: importedWorkouts[0]?.id || null
+        })
+      );
 
-    URL.revokeObjectURL(url);
-  }
+      alert("Backup imported successfully.");
+    } catch (error) {
+      alert("Could not import this file.");
+      console.error(error);
+    }
+  };
+
+  reader.readAsText(file);
+  event.target.value = "";
+}
 
   function resetDemo() {
     const first = emptyWorkout();
@@ -347,7 +385,7 @@ export default function FitnessTrackerApp() {
             ))}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-2">
 
             <button
               onClick={exportData}
@@ -359,15 +397,30 @@ export default function FitnessTrackerApp() {
               </div>
             </button>
 
-            <button
-              onClick={resetDemo}
-              className="rounded-2xl border p-3"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <RotateCcw size={16} />
-                Reset
-              </div>
-            </button>
+<button
+  onClick={() => fileInputRef.current.click()}
+  className="rounded-2xl border p-3"
+>
+  Import
+</button>
+
+<input
+  ref={fileInputRef}
+  type="file"
+  accept="application/json"
+  onChange={importData}
+  className="hidden"
+/>
+
+<button
+  onClick={resetDemo}
+  className="rounded-2xl border p-3"
+>
+  <div className="flex items-center justify-center gap-2">
+    <RotateCcw size={16} />
+    Reset
+  </div>
+</button>
 
           </div>
         </div>
