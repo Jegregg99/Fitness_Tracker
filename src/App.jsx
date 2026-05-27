@@ -55,6 +55,7 @@ function emptySet() {
   return {
     reps: "",
     weight: "",
+    time: "",
     notes: ""
   };
 }
@@ -416,34 +417,60 @@ const exerciseProgressData = useMemo(() => {
 
   const selected = selectedExercise.trim().toLowerCase();
 
-  return workouts
-    .map((workout) => {
-      let bestWeight = 0;
+  const matchingWorkouts = workouts.map((workout) => {
+    let bestWeight = 0;
+    let bestTime = 0;
+    let bestReps = 0;
 
-      workout.exercises.forEach((exercise) => {
-        const exerciseName = exercise.name.trim().toLowerCase();
+    workout.exercises.forEach((exercise) => {
+      const exerciseName = exercise.name.trim().toLowerCase();
 
-if (
-  exerciseName === selected ||
-  exerciseName.includes(selected) ||
-  selected.includes(exerciseName)
-) {
-          exercise.sets.forEach((set) => {
-            const weight = Number(set.weight);
+      const isMatch =
+        exerciseName === selected ||
+        exerciseName.includes(selected) ||
+        selected.includes(exerciseName);
 
-            if (!Number.isNaN(weight) && weight > bestWeight) {
-              bestWeight = weight;
-            }
-          });
+      if (!isMatch) return;
+
+      exercise.sets.forEach((set) => {
+        const weight = Number(set.weight);
+        const reps = Number(set.reps);
+        const time = Number(set.time);
+
+        if (!Number.isNaN(weight) && weight > bestWeight) {
+          bestWeight = weight;
+        }
+
+        if (!Number.isNaN(time) && time > bestTime) {
+          bestTime = time;
+        }
+
+        if (!Number.isNaN(reps) && reps > bestReps) {
+          bestReps = reps;
         }
       });
+    });
 
-      return {
-        date: workout.date,
-        weight: bestWeight
-      };
-    })
-    .filter((entry) => entry.weight > 0)
+    return {
+      date: workout.date,
+      weight: bestWeight,
+      time: bestTime,
+      reps: bestReps
+    };
+  });
+
+  const hasWeight = matchingWorkouts.some((entry) => entry.weight > 0);
+  const hasTime = matchingWorkouts.some((entry) => entry.time > 0);
+
+  const metric = hasWeight ? "weight" : hasTime ? "time" : "reps";
+
+  return matchingWorkouts
+    .map((entry) => ({
+      date: entry.date,
+      value: entry[metric],
+      metric
+    }))
+    .filter((entry) => entry.value > 0)
     .sort((a, b) => a.date.localeCompare(b.date));
 }, [workouts, selectedExercise]);
   if (!activeWorkout) return null;
@@ -648,7 +675,7 @@ if (
             {exercise.sets.map((set, index) => (
               <div
                 key={index}
-                className="grid grid-cols-3 gap-2"
+                className="grid grid-cols-4 gap-2"
               >
 
                 <input
@@ -681,6 +708,19 @@ if (
                   className="rounded-2xl border p-3"
                 />
 
+               <input value={set.time || ""}
+               onChange={(e) =>
+                updateSet(
+                exercise.id,
+                index,
+                {
+                  time: e.target.value
+                }
+            )
+          }
+          placeholder="Time"
+          className="rounded-2xl border p-3"
+/>
                 <button
                   onClick={() =>
                     removeSet(
@@ -813,7 +853,7 @@ if (
 
           <Line
             type="monotone"
-            dataKey="weight"
+            dataKey="value"
             stroke="#000"
             strokeWidth={3}
           />
@@ -824,7 +864,7 @@ if (
     ) : (
 
       <div className="flex h-full items-center justify-center text-sm text-slate-500">
-        Select an exercise with at least two logged workouts.
+        Select an exercise with at least one logged weight, time, or rep value.
       </div>
 
     )}
