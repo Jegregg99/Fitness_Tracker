@@ -83,11 +83,7 @@ export default function FitnessTrackerApp() {
   const fileInputRef = useRef(null);
   const CLOUD_DOC_ID = "main-workouts";
   const [selectedExercise, setSelectedExercise] = useState("");
-  const workoutTemplates = {
-  Push: ["Bench Press", "Shoulder Press", "Triceps Pushdown"],
-  Pull: ["Lat Pulldown", "Row", "Biceps Curl"],
-  Legs: ["Squat", "Leg Press", "Deadlift"],
-  "Full Body": ["Squat", "Bench Press", "Row", "Treadmill"]
+
 };
 
 useEffect(() => {
