@@ -84,7 +84,6 @@ export default function FitnessTrackerApp() {
   const CLOUD_DOC_ID = "main-workouts";
   const [selectedExercise, setSelectedExercise] = useState("");
 
-};
 
 useEffect(() => {
   async function loadCloudData() {
