@@ -571,8 +571,16 @@ if (
 />
 
 <button
-  onClick={resetDemo}
-  className="rounded-2xl border p-3"
+  onClick={() => {
+    const confirmed = window.confirm(
+      "This will delete ALL workouts. Are you sure?"
+    );
+
+    if (confirmed) {
+      resetDemo();
+    }
+  }}
+  className="rounded-2xl border p-3 text-red-600"
 >
   <div className="flex items-center justify-center gap-2">
     <RotateCcw size={16} />
@@ -757,6 +765,20 @@ if (
     )}
   </div>
 </div>
+<button
+  onClick={() => {
+    const confirmed = window.confirm(
+      "Delete this workout? This cannot be undone."
+    );
+
+    if (confirmed) {
+      deleteWorkout(activeWorkout.id);
+    }
+  }}
+  className="w-full rounded-3xl border border-red-300 p-4 text-red-600"
+>
+  Delete This Workout
+</button>
 <div className="rounded-3xl bg-white p-4 shadow-sm">
 
   <h2 className="mb-3 font-semibold">
