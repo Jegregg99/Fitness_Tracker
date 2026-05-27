@@ -308,7 +308,19 @@ useEffect(() => {
       sets: [...exercise.sets, emptySet()]
     });
   }
+function duplicateSet(exerciseId, setIndex) {
+  const exercise = activeWorkout.exercises.find(
+    (ex) => ex.id === exerciseId
+  );
 
+  const copiedSet = {
+    ...exercise.sets[setIndex]
+  };
+
+  updateExercise(exerciseId, {
+    sets: [...exercise.sets, copiedSet]
+  });
+}
   function removeSet(exerciseId, setIndex) {
     const exercise = activeWorkout.exercises.find(
       (ex) => ex.id === exerciseId
@@ -670,7 +682,7 @@ const exerciseProgressData = useMemo(() => {
             {exercise.sets.map((set, index) => (
               <div
                 key={index}
-                className="grid grid-cols-4 gap-2"
+                className="grid grid-cols-5 gap-2"
               >
 
                 <input
@@ -716,6 +728,13 @@ const exerciseProgressData = useMemo(() => {
           placeholder="Time"
           className="rounded-2xl border p-3"
 />
+              <button
+                 onClick={() => duplicateSet(exercise.id, index)}
+                className="rounded-2xl border text-sm"
+            >
+                Copy
+              </button>
+              
                 <button
                   onClick={() =>
                     removeSet(
